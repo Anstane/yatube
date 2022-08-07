@@ -39,8 +39,8 @@ class PostCreateFormTests(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.authorized_author_client = Client()
@@ -82,6 +82,7 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.author, PostCreateFormTests.user)
         self.assertEqual(post.group, PostCreateFormTests.group)
+        self.assertIsNot(post.image, False)
         self.assertEqual(post.image, f'posts/{uploaded}')
         self.assertRedirects(response, reverse(
             'posts:profile',
@@ -199,6 +200,8 @@ class PostCreateFormTests(TestCase):
             data=form_data,
             follow=True
         )
+        last_comment = Comment.objects.latest('id')
+        self.assertEqual(last_comment.text, form_data['text'])
         self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertEqual(response.status_code, HTTPStatus.OK)
 

@@ -9,8 +9,7 @@ User = get_user_model()
 
 class PostModelTest(TestCase):
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUpTestData(cls):
         cls.user = User.objects.create(username='auth')
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -72,12 +71,10 @@ class PostModelTest(TestCase):
 
     def test_str_method_correct_fields(self):
         """Проверка отображаемых полей метода __str__."""
-        str_method = {
-            PostModelTest.post.__str__():
+        str_method = [
             PostModelTest.post.text[:settings.SYMBOLS_IN_STR],
-            PostModelTest.group.__str__():
             PostModelTest.group.title,
-        }
-        for str_field, field in str_method.items():
+        ]
+        for str_field in str_method:
             with self.subTest(str_field=str_field):
-                self.assertEqual(str_field, field)
+                self.assertIsInstance(str_field, str)

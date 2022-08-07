@@ -12,8 +12,7 @@ User = get_user_model()
 
 class PostURLTests(TestCase):
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUpTestData(cls):
         cls.user = User.objects.create(username='auth')
         cls.new_user = User.objects.create(username='random_user')
         cls.group = Group.objects.create(
@@ -60,6 +59,7 @@ class PostURLTests(TestCase):
         """
         response = self.client.get('/unexist_page/')
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertTemplateUsed(response, 'core/404.html')
 
     def test_guest_client_redirects(self):
         """
@@ -67,14 +67,18 @@ class PostURLTests(TestCase):
         """
         login_url = reverse('users:login')
         url = reverse('posts:create_post')
-        post_edit_url = reverse('posts:post_edit',
-                                kwargs={'post_id': PostURLTests.post.id})
+        post_edit_url = reverse(
+            'posts:post_edit',
+            kwargs={'post_id': PostURLTests.post.id}
+        )
+        follow_page = reverse('posts:follow_index')
         redirect_pages = {
             reverse('posts:create_post'): f'{login_url}?next={url}',
             reverse(
                 'posts:post_edit',
                 kwargs={'post_id': PostURLTests.post.id}
             ): f'{login_url}?next={post_edit_url}',
+            reverse('posts:follow_index'): f'{login_url}?next={follow_page}'
         }
         for pages, redirects in redirect_pages.items():
             with self.subTest(redirects=redirects):
@@ -83,13 +87,14 @@ class PostURLTests(TestCase):
 
     def test_available_pages_for_authorized_author_client(self):
         """
-        Проверка доступности создания и редактирования поста для автора.
+        Проверка доступности страниц для автора.
         """
         available_pages = [
             reverse('posts:create_post'),
             reverse('posts:post_edit',
                     kwargs={'post_id': PostURLTests.post.id}
                     ),
+            reverse('posts:follow_index'),
         ]
         for pages in available_pages:
             with self.subTest(available_pages=available_pages):
@@ -139,6 +144,7 @@ class PostURLTests(TestCase):
                     kwargs={'post_id': PostURLTests.post.id}
                     ): 'posts/create_post.html',
             reverse('posts:create_post'): 'posts/create_post.html',
+            reverse('posts:follow_index'): 'posts/follow.html'
         }
         for address, template in templates_pages_names.items():
             with self.subTest(address=address):

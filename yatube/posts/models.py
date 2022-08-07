@@ -13,7 +13,8 @@ class Post(models.Model):
     )
     pub_date = models.DateTimeField(
         'Дата публикации',
-        auto_now_add=True
+        auto_now_add=True,
+        db_index=True
     )
     author = models.ForeignKey(
         User,
@@ -87,3 +88,10 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Автор'
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'],
+                name='unique_follow')
+        ]

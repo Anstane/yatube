@@ -14,8 +14,7 @@ User = get_user_model()
 
 class PostViewTest(TestCase):
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUpTestData(cls):
         cls.user = User.objects.create(username='auth')
         cls.another_user = User.objects.create(username='random')
         cls.random_user = User.objects.create(username='random_user')
@@ -83,8 +82,8 @@ class PostViewTest(TestCase):
         for content in profile_context:
             with self.subTest(profile_context=profile_context):
                 self.assertIn(content, response.context)
-                self.assertEqual(first_object_author.username,
-                                 PostViewTest.post.author.username)
+                self.assertEqual(first_object_author,
+                                 PostViewTest.post.author)
                 self.assertEqual(first_object_page_obj, PostViewTest.post)
 
     def test_detail_post(self):
@@ -179,20 +178,24 @@ class PostViewTest(TestCase):
 
     def test_of_subscription(self):
         """Проверяем функционал подписки."""
-        count = Follow.objects.count()
-        response = self.another_client.get(
+        count = Follow.objects.filter(
+            user=PostViewTest.user,
+            author=PostViewTest.another_user).count()
+        response = self.authorized_client.get(
             reverse(
                 'posts:profile_follow',
-                kwargs={'username': PostViewTest.user.username})
+                kwargs={'username': PostViewTest.another_user.username})
         )
-        first_follow = Follow.objects.first()
-        another_count = Follow.objects.count()
+        last_follow = Follow.objects.latest('id')
+        another_count = Follow.objects.filter(
+            user=PostViewTest.user,
+            author=PostViewTest.another_user).count()
         self.assertEqual(another_count, count + 1)
-        self.assertEqual(first_follow.user, PostViewTest.another_user)
-        self.assertEqual(first_follow.author, PostViewTest.user)
+        self.assertEqual(last_follow.user, PostViewTest.user)
+        self.assertEqual(last_follow.author, PostViewTest.another_user)
         self.assertRedirects(response, reverse(
             'posts:profile',
-            kwargs={'username': PostViewTest.user})
+            kwargs={'username': PostViewTest.another_user})
         )
 
     def test_of_unsubscription(self):
@@ -235,41 +238,51 @@ class PostViewTest(TestCase):
     def test_new_post_of_sub_auth_appear(self):
         """
         Проверяем, появляются ли записи авторов,
-        только у подписанных пользователей или же у всех.
+        у подписанных пользователей.
         """
-        self.another_client.get(
+        self.authorized_client.get(
             reverse(
                 'posts:profile_follow',
-                kwargs={'username': PostViewTest.user.username})
+                kwargs={'username': PostViewTest.another_user.username})
         )
-        response_auth_client = self.another_client.get(
-            reverse('posts:follow_index')
-        )
-        response_random_client = self.random_client.get(
+        response_auth_client = self.authorized_client.get(
             reverse('posts:follow_index')
         )
         following_posts = len(response_auth_client.context['page_obj'])
-        following_posts_rand = len(response_random_client.context['page_obj'])
         random_post = Post.objects.create(
             text='Случайный текст',
-            author=PostViewTest.user,
+            author=PostViewTest.another_user,
             group=PostViewTest.group
         )
-        response_auth_client2 = self.another_client.get(
-            reverse('posts:follow_index')
-        )
-        response_random_client2 = self.random_client.get(
+        response_auth_client2 = self.authorized_client.get(
             reverse('posts:follow_index')
         )
         following_posts_update = len(response_auth_client2.context['page_obj'])
-        following_posts_rand_update = len(
-            response_random_client2.context['page_obj']
-        )
         first_post = Post.objects.first()
         self.assertEqual(following_posts_update, following_posts + 1)
         self.assertEqual(first_post.text, random_post.text)
         self.assertEqual(first_post.author, random_post.author)
         self.assertEqual(first_post.group, random_post.group)
+
+    def test_new_post_of_auth_do_not_appear_for_random(self):
+        """
+        Проверяем, появляется ли пост у случайных пользоваталей.
+        """
+        response_random_client = self.random_client.get(
+            reverse('posts:follow_index')
+        )
+        following_posts_rand = len(response_random_client.context['page_obj'])
+        Post.objects.create(
+            text='Случайный текст',
+            author=PostViewTest.user,
+            group=PostViewTest.group
+        )
+        response_random_client2 = self.random_client.get(
+            reverse('posts:follow_index')
+        )
+        following_posts_rand_update = len(
+            response_random_client2.context['page_obj']
+        )
         self.assertEqual(following_posts_rand, following_posts_rand_update)
 
 
