@@ -1,5 +1,4 @@
 from random import randint
-from urllib import response
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
@@ -203,8 +202,8 @@ class PostViewTest(TestCase):
         """Проверяем функционал отписки."""
         count = Follow.objects.count()
         Follow.objects.create(
-            user = PostViewTest.user,
-            author = PostViewTest.another_user,
+            user=PostViewTest.user,
+            author=PostViewTest.another_user,
         )
         another_count = Follow.objects.count()
         self.assertEqual(another_count, count + 1)
@@ -244,13 +243,13 @@ class PostViewTest(TestCase):
         PostViewTest.some_client = Client()
         PostViewTest.some_client.force_login(PostViewTest.some_user)
         some_post = Post.objects.create(
-            text = 'random',
-            author = PostViewTest.some_user,
-            group = PostViewTest.group
+            text='random',
+            author=PostViewTest.some_user,
+            group=PostViewTest.group
         )
         Follow.objects.create(
-            user = PostViewTest.user,
-            author = PostViewTest.some_user,
+            user=PostViewTest.user,
+            author=PostViewTest.some_user,
         )
         response = self.authorized_client.get(
             reverse('posts:follow_index')
@@ -270,9 +269,9 @@ class PostViewTest(TestCase):
         PostViewTest.some_client = Client()
         PostViewTest.some_client.force_login(PostViewTest.some_user)
         some_post = Post.objects.create(
-            text = 'random',
-            author = PostViewTest.some_user,
-            group = PostViewTest.group
+            text='random',
+            author=PostViewTest.some_user,
+            group=PostViewTest.group
         )
         response = self.authorized_client.get(
             reverse('posts:follow_index')
