@@ -1,4 +1,5 @@
 from random import randint
+from urllib import response
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
@@ -201,23 +202,22 @@ class PostViewTest(TestCase):
     def test_of_unsubscription(self):
         """Проверяем функционал отписки."""
         count = Follow.objects.count()
-        self.another_client.get(
-            reverse(
-                'posts:profile_follow',
-                kwargs={'username': PostViewTest.user.username})
+        Follow.objects.create(
+            user = PostViewTest.user,
+            author = PostViewTest.another_user,
         )
         another_count = Follow.objects.count()
         self.assertEqual(another_count, count + 1)
-        response_2 = self.another_client.get(
+        response_2 = self.authorized_client.get(
             reverse(
                 'posts:profile_unfollow',
-                kwargs={'username': PostViewTest.user.username})
+                kwargs={'username': PostViewTest.another_user.username})
         )
         one_more_count = Follow.objects.count()
         self.assertEqual(count, one_more_count)
         self.assertRedirects(response_2, reverse(
             'posts:profile',
-            kwargs={'username': PostViewTest.user})
+            kwargs={'username': PostViewTest.another_user})
         )
 
     def test_user_can_not_sub_on_himself(self):
@@ -240,50 +240,45 @@ class PostViewTest(TestCase):
         Проверяем, появляются ли записи авторов,
         у подписанных пользователей.
         """
-        self.authorized_client.get(
-            reverse(
-                'posts:profile_follow',
-                kwargs={'username': PostViewTest.another_user.username})
+        PostViewTest.some_user = User.objects.create(username='some_user')
+        PostViewTest.some_client = Client()
+        PostViewTest.some_client.force_login(PostViewTest.some_user)
+        some_post = Post.objects.create(
+            text = 'random',
+            author = PostViewTest.some_user,
+            group = PostViewTest.group
         )
-        response_auth_client = self.authorized_client.get(
+        Follow.objects.create(
+            user = PostViewTest.user,
+            author = PostViewTest.some_user,
+        )
+        response = self.authorized_client.get(
             reverse('posts:follow_index')
         )
-        following_posts = len(response_auth_client.context['page_obj'])
-        random_post = Post.objects.create(
-            text='Случайный текст',
-            author=PostViewTest.another_user,
-            group=PostViewTest.group
-        )
-        response_auth_client2 = self.authorized_client.get(
-            reverse('posts:follow_index')
-        )
-        following_posts_update = len(response_auth_client2.context['page_obj'])
-        first_post = Post.objects.first()
-        self.assertEqual(following_posts_update, following_posts + 1)
-        self.assertEqual(first_post.text, random_post.text)
-        self.assertEqual(first_post.author, random_post.author)
-        self.assertEqual(first_post.group, random_post.group)
+        objects = response.context['page_obj']
+        post = Post.objects.first()
+        self.assertIn(some_post, objects)
+        self.assertEqual(post.text, some_post.text)
+        self.assertEqual(post.author, some_post.author)
+        self.assertEqual(post.group, some_post.group)
 
     def test_new_post_of_auth_do_not_appear_for_random(self):
         """
         Проверяем, появляется ли пост у случайных пользоваталей.
         """
-        response_random_client = self.random_client.get(
+        PostViewTest.some_user = User.objects.create(username='some_user')
+        PostViewTest.some_client = Client()
+        PostViewTest.some_client.force_login(PostViewTest.some_user)
+        some_post = Post.objects.create(
+            text = 'random',
+            author = PostViewTest.some_user,
+            group = PostViewTest.group
+        )
+        response = self.authorized_client.get(
             reverse('posts:follow_index')
         )
-        following_posts_rand = len(response_random_client.context['page_obj'])
-        Post.objects.create(
-            text='Случайный текст',
-            author=PostViewTest.user,
-            group=PostViewTest.group
-        )
-        response_random_client2 = self.random_client.get(
-            reverse('posts:follow_index')
-        )
-        following_posts_rand_update = len(
-            response_random_client2.context['page_obj']
-        )
-        self.assertEqual(following_posts_rand, following_posts_rand_update)
+        objects = response.context['page_obj']
+        self.assertNotIn(some_post, objects)
 
 
 class PaginatorViewTest(TestCase):

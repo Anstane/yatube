@@ -53,7 +53,7 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     comments = post.comments.select_related('post', 'author')
-    form = CommentForm(None)
+    form = CommentForm()
     context = {
         'post': post,
         'form': form,
@@ -143,9 +143,8 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    following = Follow.objects.filter(
+    Follow.objects.filter(
         user=request.user,
         author=author
-    )
-    following.delete()
+    ).delete()
     return redirect('posts:profile', username=username)
